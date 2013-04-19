@@ -3,9 +3,3 @@ description = Adds Realtime content colaboration to Drupal via Google Drive inte
 core = 7.x
 
 files[] = realtime.pages.inc
-files[] = RealtimeAuthHandler.class.inc
-;files[] = GoogleDriveServiceHandler.class.inc
-
-;dependencies[] = libraries
-;dependencies[] = entity
-;dependencies[] = cloud_asset
