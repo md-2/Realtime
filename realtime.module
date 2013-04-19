@@ -1,0 +1,82 @@
+<?php
+/**
+ * @file
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function realtime_menu() {
+  $items = array();
+
+  $items['goauth/authenticate'] = array(
+    'title' => 'Google Drive OAuth login',
+    'page callback' => 'realtime_authenticate_page',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    'file' => 'realtime.pages.inc',
+  );
+  
+  $items['realtimecallback'] = array(
+    'title' => 'Thank you for authorising',
+    'page callback' => 'realtime_thankyou_page',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    'file' => 'realtime.pages.inc',
+  );
+
+  $items['admin/config/realtime'] = array(
+    'title' => 'Google Realtime authentication settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('realtime_admin_auth_form'),
+    'file' => 'realtime.pages.inc',
+    'access arguments' => array('administer realtime'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_node_prepare().
+ */
+function realtime_node_prepare($node) {
+/*   dpr($node); */
+  $realtimeOptions = array(
+  //Client ID from the APIs Console.
+  'clientId' => variable_get('realtime_client_id'),
+  
+  //The ID of the button to click to authorize. Must be a DOM element ID.
+  'authButtonElementId' => 'authorizeButton',
+  
+  //Function to be called when a Realtime model is first created.
+  'initializeModel' => 'initializeModel',
+  
+  //Autocreate files right after auth automatically.
+  'autoCreate' => true,
+  
+  //Autocreate files right after auth automatically.
+  'defaultTitle' => 'NodeID:' . $node->nid,
+  
+  //Function to be called every time a Realtime file is loaded.
+  'onFileLoaded' => 'onFileLoaded',
+  
+  'body' => $node->body['und'][0]['value'],
+  );
+  
+  drupal_add_js('http://apis.google.com/js/api.js', 'external');
+  drupal_add_js(array('realtime' => $realtimeOptions), 'setting');
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function realtime_form_node_form_alter(&$form, &$form_state) {
+/*   dpr($form); */
+  $form['mymarkup'] = array(
+    '#type' => 'markup', 
+    '#markup' => '<button id="authorizeButton" disabled>You must authorize</button>', 
+  );
+  drupal_add_js(drupal_get_path('module', 'realtime') .'/js/realtime.js', array('type' => 'file', 'scope' => 'footer', 'weight' => 5));
+  drupal_add_js(drupal_get_path('module', 'realtime') .'/js/realtime-client-utils.js', array('type' => 'file', 'scope' => 'footer', 'weight' => 5));
+  drupal_add_js('startRealtime()', array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
+}

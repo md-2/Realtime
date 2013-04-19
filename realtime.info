@@ -1,0 +1,11 @@
+name = Realtime
+description = Adds Realtime content colaboration to Drupal via Google Drive integration.
+core = 7.x
+
+files[] = realtime.pages.inc
+files[] = RealtimeAuthHandler.class.inc
+;files[] = GoogleDriveServiceHandler.class.inc
+
+;dependencies[] = libraries
+;dependencies[] = entity
+;dependencies[] = cloud_asset
