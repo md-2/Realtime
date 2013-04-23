@@ -8,23 +8,7 @@
  */
 function realtime_menu() {
   $items = array();
-
-  $items['goauth/authenticate'] = array(
-    'title' => 'Google Drive OAuth login',
-    'page callback' => 'realtime_authenticate_page',
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-    'file' => 'realtime.pages.inc',
-  );
   
-  $items['realtimecallback'] = array(
-    'title' => 'Thank you for authorising',
-    'page callback' => 'realtime_thankyou_page',
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-    'file' => 'realtime.pages.inc',
-  );
-
   $items['admin/config/realtime'] = array(
     'title' => 'Google Realtime authentication settings',
     'page callback' => 'drupal_get_form',
@@ -32,7 +16,7 @@ function realtime_menu() {
     'file' => 'realtime.pages.inc',
     'access arguments' => array('administer realtime'),
   );
-
+  
   return $items;
 }
 
@@ -40,43 +24,115 @@ function realtime_menu() {
  * Implements hook_node_prepare().
  */
 function realtime_node_prepare($node) {
-/*   dpr($node); */
-  $realtimeOptions = array(
-  //Client ID from the APIs Console.
-  'clientId' => variable_get('realtime_client_id'),
-  
-  //The ID of the button to click to authorize. Must be a DOM element ID.
-  'authButtonElementId' => 'authorizeButton',
-  
-  //Function to be called when a Realtime model is first created.
-  'initializeModel' => 'initializeModel',
-  
-  //Autocreate files right after auth automatically.
-  'autoCreate' => true,
-  
-  //Autocreate files right after auth automatically.
-  'defaultTitle' => 'NodeID:' . $node->nid,
-  
-  //Function to be called every time a Realtime file is loaded.
-  'onFileLoaded' => 'onFileLoaded',
-  
-  'body' => $node->body['und'][0]['value'],
-  );
-  
-  drupal_add_js('http://apis.google.com/js/api.js', 'external');
-  drupal_add_js(array('realtime' => $realtimeOptions), 'setting');
+  if(!empty($node->nid)) {
+    $realtimeOptions = array(
+    //Client ID from the APIs Console.
+    'clientId' => variable_get('realtime_client_id'),
+    
+    //The ID of the button to click to authorize. Must be a DOM element ID.
+    'authButtonElementId' => 'authorizeButton',
+    
+    //Function to be called when a Realtime model is first created.
+    'initializeModel' => 'initializeModel',
+    
+    //Autocreate files right after auth automatically.
+    'autoCreate' => true,
+    
+    //Autocreate files right after auth automatically.
+    'defaultTitle' => 'NodeID:' . $node->nid,
+    
+    //Function to be called every time a Realtime file is loaded.
+    'onFileLoaded' => 'onFileLoaded',
+    
+    'body' => $node->body['und'][0]['value'],
+    );
+    
+    drupal_add_js('http://apis.google.com/js/api.js', 'external');
+    drupal_add_js(array('realtime' => $realtimeOptions), 'setting');
+    
+    $querystring = drupal_get_query_parameters();
+    if(!empty($querystring)) {
+      db_merge('realtime_node_gdoc')
+        ->key(array('docid' => $querystring['fileId']))
+        ->fields(array(
+              'docid' => $querystring['fileId'],
+              'nid' => $node->nid,
+        ))
+        ->execute();
+    } 
+  }
 }
 
 /**
  * Implements hook_form_alter().
  */
 function realtime_form_node_form_alter(&$form, &$form_state) {
+  array_unshift($form['#validate'], 'collision_buster_bust');
+  $form['#validate'][] = 'collision_buster_reset';
+
 /*   dpr($form); */
   $form['mymarkup'] = array(
     '#type' => 'markup', 
-    '#markup' => '<button id="authorizeButton" disabled>You must authorize</button>', 
+    '#markup' => '<button id="authorizeButton" disabled>Signin to Google+ to collaborate</button>',
+    '#weight' => -99,
   );
-  drupal_add_js(drupal_get_path('module', 'realtime') .'/js/realtime.js', array('type' => 'file', 'scope' => 'footer', 'weight' => 5));
-  drupal_add_js(drupal_get_path('module', 'realtime') .'/js/realtime-client-utils.js', array('type' => 'file', 'scope' => 'footer', 'weight' => 5));
-  drupal_add_js('startRealtime()', array('type' => 'inline', 'scope' => 'footer', 'weight' => 5));
+  
+  if(!empty($form['nid']['#value'])) {
+    drupal_add_js(drupal_get_path('module', 'realtime') .'/js/realtime.js', array('type' => 'file', 'scope' => 'footer', 'weight' => 5));
+    drupal_add_js(drupal_get_path('module', 'realtime') .'/js/realtime-client-utils.js', array('type' => 'file', 'scope' => 'footer', 'weight' => 5));
+    drupal_add_js('startRealtime()', array('type' => 'inline', 'scope' => 'footer', 'weight' => 15));
+  }
+}
+
+/**
+  * Implement hook_node_update() to unlock a node after it's saved.
+  *
+  * This hook is invoked after hook_node_save() is invoked and after
+  * the changes to the node are actually saved to the database, so it's
+  * the right place to unlock a modified node.
+  *
+  * @param $node
+  *   The node which was saved.
+  */
+function realtime_node_update($node) {
+  db_query('DELETE FROM {realtime_node_gdoc} WHERE nid = :nid',array(':nid' => $node->nid));
+}
+
+
+function hook_node_delete($node) {
+  db_query('DELETE FROM {realtime_node_gdoc} WHERE nid = :nid',array(':nid' => $node->nid));
+}
+
+/**
+ * Change the $node->changed value to now.
+ *
+ * This fools the collision check performed in node_validate().
+ */
+function collision_buster_bust($form, &$form_state) {
+  if (isset($form_state['values']['nid'])) {
+    $form_state['values']['collision_buster_changed'] = $form_state['values']['changed'];
+    $form_state['values']['changed'] = time();
+  }
+}
+
+/**
+ * Reset $node->changed to its original value.
+ */
+function collision_buster_reset($form, &$form_state) {
+  if (isset($form_state['values']['collision_buster_changed'])) {
+    $form_state['values']['changed'] = $form_state['values']['collision_buster_changed'];
+    unset($form_state['values']['collision_buster_changed']);
+  }
+}
+
+function realtime_url_outbound_alter(&$path, &$options, $original_path) {
+  if (preg_match('|^node/([0-9]*)/edit(/.*)?|', $path, $matches)) {
+    $node = node_load($matches[1]);
+    if ($node->nid == $matches[1]) {
+      $fileID = db_query('SELECT docid FROM {realtime_node_gdoc} WHERE nid = :nid',array(':nid' => $matches[1]))->fetchField();
+      if($fileID) {
+        $options['query']['fileId'] = $fileID;        
+      }
+    }
+  }
 }
