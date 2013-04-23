@@ -51,7 +51,7 @@ function realtime_node_prepare($node) {
     drupal_add_js(array('realtime' => $realtimeOptions), 'setting');
     
     $querystring = drupal_get_query_parameters();
-    if(!empty($querystring)) {
+    if(!empty($querystring['fileId'])) {
       db_merge('realtime_node_gdoc')
         ->key(array('docid' => $querystring['fileId']))
         ->fields(array(
