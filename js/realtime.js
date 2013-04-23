@@ -9,7 +9,11 @@
 function initializeModel(model) {
   var string = model.createString(Drupal.settings.realtime.body);
 //  var string = gapi.drive.realtime.model.prototype.createString(Drupal.settings.realtime.body);
-  model.getRoot().set('text', string);
+  model.getRoot().set('body', string);
+}
+
+function setPermissions() {
+  
 }
 
 /**
@@ -20,28 +24,21 @@ function initializeModel(model) {
  * @param doc {gapi.drive.realtime.Document} the Realtime document.
  */
 function onFileLoaded(doc) {
-  var string = doc.getModel().getRoot().get('text');
+  var body = {'value': "",'type': "anyone",'role': "writer"};
+  var fileId = rtclient.params.fileId;
+  gapi.client.load('drive', 'v2', function() {
+    gapi.client.drive.permissions.insert({
+     'fileId': fileId,
+     'resource': body
+    });
+  });
+    
+  var string = doc.getModel().getRoot().get('body');
 
   // Keeping one box updated with a String binder.
   var textArea1 = document.getElementById('edit-body-und-0-value');
   gapi.drive.realtime.databinding.bindString(string, textArea1);
-
-  // Keeping one box updated with a custom EventListener.
-  var textArea2 = document.getElementById('edit-field-body2-und-0-value');
-  var updateTextArea2 = function(e) {
-    textArea2.value = string;
-  };
-  string.addEventListener(gapi.drive.realtime.EventType.TEXT_INSERTED, updateTextArea2);
-  string.addEventListener(gapi.drive.realtime.EventType.TEXT_DELETED, updateTextArea2);
-  textArea2.onkeyup = function() {
-    string.setText(textArea2.value);
-  };
-  updateTextArea2();
-
-  // Enabling UI Elements.
-  textArea1.disabled = false;
-  textArea2.disabled = false;
-  
+  console.log(rtclient.params.fileId);
 }
 
 /**
