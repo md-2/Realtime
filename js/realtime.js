@@ -27,10 +27,11 @@ function onFileLoaded(doc) {
   var body = {'value': "",'type': "anyone",'role': "writer"};
   var fileId = rtclient.params.fileId;
   gapi.client.load('drive', 'v2', function() {
-    gapi.client.drive.permissions.insert({
+    var makepublic = gapi.client.drive.permissions.insert({
      'fileId': fileId,
      'resource': body
     });
+    makepublic.execute(function(resp) { });
   });
     
   var string = doc.getModel().getRoot().get('body');
@@ -38,7 +39,7 @@ function onFileLoaded(doc) {
   // Keeping one box updated with a String binder.
   var textArea1 = document.getElementById('edit-body-und-0-value');
   gapi.drive.realtime.databinding.bindString(string, textArea1);
-  console.log(rtclient.params.fileId);
+  //console.log(rtclient.params.fileId);
 }
 
 /**
