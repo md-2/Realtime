@@ -52,13 +52,18 @@ function realtime_node_prepare($node) {
     
     $querystring = drupal_get_query_parameters();
     if(!empty($querystring['fileId'])) {
-      db_merge('realtime_node_gdoc')
-        ->key(array('docid' => $querystring['fileId']))
-        ->fields(array(
-              'docid' => $querystring['fileId'],
-              'nid' => $node->nid,
-        ))
-        ->execute();
+      $firstcome = db_query('SELECT uid FROM {realtime_node_gdoc} WHERE nid = :nid',array(':nid' => $node->nid))->fetchField();
+      if(empty($firstcome)){
+        global $user;
+        db_merge('realtime_node_gdoc')
+          ->key(array('docid' => $querystring['fileId']))
+          ->fields(array(
+                'docid' => $querystring['fileId'],
+                'nid' => $node->nid,
+                'uid' => $user->uid,
+          ))
+          ->execute();
+      }
     } 
   }
 }
