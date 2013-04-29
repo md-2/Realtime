@@ -1,0 +1,32 @@
+<?php
+/**
+ * @file
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function realtime_schema() {
+  $schema = array();
+
+  $schema['realtime_node_gdoc'] = array(
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'docid' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('docid'),
+  );
+  
+  return $schema;
+}
